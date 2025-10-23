@@ -1,5 +1,6 @@
 ---
-date: "2025-10-13"
+createdAt: "2025-10-13"
+updatedAt: "2025-10-13"
 title: "チュートリアルに参加！"
 priority: "low"
 emoji: "💬"

@@ -25,13 +25,13 @@ export function getQuestsByLevel(level: number): Quest[] {
   const quests = fileNames
     .filter((fileName) => fileName.endsWith(".md"))
     .map((fileName) => {
-      const id = fileName.replace(/\.md$/, "");
+      const slug = fileName.replace(/\.md$/, "");
       const fullPath = path.join(levelDir, fileName);
       const fileContents = fs.readFileSync(fullPath, "utf8");
       const { data, content } = matter(fileContents);
 
       return {
-        id: `level-${level}/${id}`,
+        slug: `level-${level}/${slug}`,
         level,
         metadata: data as QuestMetadata,
         content,
@@ -59,12 +59,12 @@ export function getAllQuests(): Quest[] {
 
 /**
  * 特定のクエストを取得
- * @param id - クエストID（例: "level-0/start"）
+ * @param slug - クエストスラッグ（例: "level-0/start"）
  * @returns クエスト情報
  */
-export async function getQuestById(id: string): Promise<Quest | null> {
+export async function getQuestBySlug(slug: string): Promise<Quest | null> {
   try {
-    const fullPath = path.join(dataDirectory, `${id}.md`);
+    const fullPath = path.join(dataDirectory, `${slug}.md`);
 
     if (!fs.existsSync(fullPath)) {
       return null;
@@ -78,18 +78,18 @@ export async function getQuestById(id: string): Promise<Quest | null> {
     const contentHtml = processedContent.toString();
 
     // レベルを抽出
-    const levelMatch = id.match(/level-(\d+)/);
+    const levelMatch = slug.match(/level-(\d+)/);
     const level = levelMatch ? parseInt(levelMatch[1], 10) : 0;
 
     return {
-      id,
+      slug,
       level,
       metadata: data as QuestMetadata,
       content,
       contentHtml,
     };
   } catch (error) {
-    console.error(`Error loading quest ${id}:`, error);
+    console.error(`Error loading quest ${slug}:`, error);
     return null;
   }
 }

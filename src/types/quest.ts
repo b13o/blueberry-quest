@@ -1,6 +1,7 @@
 // クエストの型定義
 export interface QuestMetadata {
-  date: string;
+  createdAt: string;
+  updatedAt: string;
   title: string;
   priority: string;
   emoji: string;
@@ -9,7 +10,7 @@ export interface QuestMetadata {
 }
 
 export interface Quest {
-  id: string;
+  slug: string;
   level: number;
   metadata: QuestMetadata;
   content: string;
