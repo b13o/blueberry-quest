@@ -1,11 +1,17 @@
 ---
-createdAt: "2025-10-13"
-updatedAt: "2025-10-13"
-title: "チュートリアルに参加！"
-priority: "low"
-emoji: "💬"
-tags: ["github", "discussions"]
-completers: ["tanaka", "yamada", "sato"]
+createdAt: '2025-10-13'
+updatedAt: '2025-10-23'
+title: チュートリアルに参加！
+priority: low
+emoji: "\U0001F4AC"
+tags:
+  - github
+  - discussions
+completers:
+  - tanaka
+  - yamada
+  - sato
+  - kazzyfrog
 ---
 
 # Quest: 依頼書
