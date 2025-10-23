@@ -47,26 +47,25 @@ jobs:
             const issueBody = issue.body || '';
             const commenter = context.payload.comment.user.login;
 
-            // Issueの本文から情報を抽出
-            const questIdMatch = issueBody.match(/クエストID[:\s]*(.+)/);
-            const usernameMatch = issueBody.match(/GitHubユーザー名[:\s]*(.+)/);
+            // Issueの本文からクエストスラッグを抽出
+            const questSlugMatch = issueBody.match(/クエストスラッグ[:\s]*(.+)/);
 
-            const questId = questIdMatch ? questIdMatch[1].trim().replace(/`/g, '') : '';
-            const username = usernameMatch ? usernameMatch[1].trim().replace(/@/g, '') : commenter;
+            const questSlug = questSlugMatch ? questSlugMatch[1].trim().replace(/`/g, '') : '';
+            const username = commenter; // コメント投稿者を常に使用
 
-            if (!questId) {
-              core.setFailed('クエストIDが見つかりませんでした');
+            if (!questSlug) {
+              core.setFailed('クエストスラッグが見つかりませんでした');
               return;
             }
 
-            console.log('Quest ID:', questId);
+            console.log('Quest Slug:', questSlug);
             console.log('Username:', username);
             console.log('Issue Number:', issue.number);
 
-            core.setOutput('quest_id', questId);
+            core.setOutput('quest_slug', questSlug);
             core.setOutput('username', username);
             core.setOutput('issue_number', issue.number);
-            core.setOutput('branch_name', `quest/${questId.replace(/\//g, '-')}/${username}`);
+            core.setOutput('branch_name', `quest/${questSlug.replace(/\//g, '-')}/${username}`);
 
       - name: Configure Git
         run: |
@@ -86,9 +85,9 @@ jobs:
             const path = require('path');
             const matter = require('gray-matter');
 
-            const questId = '${{ steps.extract-info.outputs.quest_id }}';
+            const questSlug = '${{ steps.extract-info.outputs.quest_slug }}';
             const username = '${{ steps.extract-info.outputs.username }}';
-            const questPath = path.join('_data', `${questId}.md`);
+            const questPath = path.join('_data', `${questSlug}.md`);
 
             console.log('Quest file path:', questPath);
 
@@ -108,7 +107,13 @@ jobs:
 
             if (!data.completers.includes(username)) {
               data.completers.push(username);
+              
+              // 更新日を現在の日付に更新
+              const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+              data.updatedAt = today;
+              
               console.log(`Added ${username} to completers`);
+              console.log(`Updated updatedAt to ${today}`);
               
               // ファイルを更新
               const newContent = matter.stringify(content, data);
@@ -127,7 +132,7 @@ jobs:
           git add ${{ steps.update-quest.outputs.quest_path }}
           git commit -m "feat: Add @${{ steps.extract-info.outputs.username }} to quest completers
 
-          Quest ID: ${{ steps.extract-info.outputs.quest_id }}
+          Quest: ${{ steps.extract-info.outputs.quest_slug }}
           Closes #${{ steps.extract-info.outputs.issue_number }}"
 
       - name: Push branch
@@ -143,7 +148,7 @@ jobs:
             const { data: pullRequest } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `🎉 [Quest Complete] ${{ steps.extract-info.outputs.quest_id }} - @${{ steps.extract-info.outputs.username }}`,
+              title: `🎉 [Quest Complete] ${{ steps.extract-info.outputs.quest_slug }} - @${{ steps.extract-info.outputs.username }}`,
               head: '${{ steps.extract-info.outputs.branch_name }}',
               base: 'main',
               body: `## 🎯 クエスト完了
@@ -151,7 +156,7 @@ jobs:
             このPRは、クエスト完了の申請です。
 
             ### クエスト情報
-            - **クエストID**: \`${{ steps.extract-info.outputs.quest_id }}\`
+            - **クエスト**: \`${{ steps.extract-info.outputs.quest_slug }}\`
             - **完了者**: @${{ steps.extract-info.outputs.username }}
             - **関連Issue**: #${{ steps.extract-info.outputs.issue_number }}
 
@@ -221,5 +226,5 @@ jobs:
               issue_number: ${{ steps.extract-info.outputs.issue_number }},
               body: `⚠️ @${{ steps.extract-info.outputs.username }} さんは既にこのクエストを完了しています。
 
-            完了者リストを確認してください： https://github.com/${{ github.repository }}/blob/main/_data/${{ steps.extract-info.outputs.quest_id }}.md`
+            完了者リストを確認してください： https://github.com/${{ github.repository }}/blob/main/_data/${{ steps.extract-info.outputs.quest_slug }}.md`
             });

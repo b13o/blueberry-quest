@@ -12,26 +12,13 @@ body:
         作業が完了したら、コメント欄に「完了しました」と投稿してください。
         自動的にPRが作成されます！
 
-  - type: dropdown
-    id: level
-    attributes:
-      label: レベル
-      description: 挑戦するクエストのレベルを選択してください
-      options:
-        - "Level 0"
-        - "Level 1"
-        - "Level 2"
-        - "Level 3"
-        - "Level 4"
-        - "Level 5"
-    validations:
-      required: true
+        **注意**: GitHubユーザー名は、Issueにコメントした人（あなた）が自動的に使用されます。
 
   - type: input
-    id: quest-id
+    id: quest-slug
     attributes:
-      label: クエストID
-      description: "例: level-0/start, level-1/daily-commit"
+      label: クエストスラッグ
+      description: "クエストの識別子（例: level-0/start, level-1/daily-commit）"
       placeholder: "level-0/start"
     validations:
       required: true
@@ -42,15 +29,6 @@ body:
       label: クエスト名
       description: 挑戦するクエストのタイトル
       placeholder: "GitHub Discussions を使いこなそう！"
-    validations:
-      required: true
-
-  - type: input
-    id: username
-    attributes:
-      label: GitHubユーザー名
-      description: あなたのGitHubユーザー名（@なし）
-      placeholder: "octocat"
     validations:
       required: true
 
@@ -87,4 +65,3 @@ body:
           required: true
         - label: 作業完了時にこのIssueにコメントすることを理解しました
           required: true
-
