@@ -1,0 +1,225 @@
+name: Quest Completion - Create PR
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  create-completion-pr:
+    # Issueのコメントで「完了しました」「完了」「done」などが含まれている場合に実行
+    if: |
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'quest-in-progress') &&
+      (
+        contains(github.event.comment.body, '完了しました') ||
+        contains(github.event.comment.body, '完了') ||
+        contains(github.event.comment.body, 'done') ||
+        contains(github.event.comment.body, 'Done') ||
+        contains(github.event.comment.body, 'DONE')
+      )
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract quest information from issue
+        id: extract-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const issueBody = issue.body || '';
+            const commenter = context.payload.comment.user.login;
+
+            // Issueの本文から情報を抽出
+            const questIdMatch = issueBody.match(/クエストID[:\s]*(.+)/);
+            const usernameMatch = issueBody.match(/GitHubユーザー名[:\s]*(.+)/);
+
+            const questId = questIdMatch ? questIdMatch[1].trim().replace(/`/g, '') : '';
+            const username = usernameMatch ? usernameMatch[1].trim().replace(/@/g, '') : commenter;
+
+            if (!questId) {
+              core.setFailed('クエストIDが見つかりませんでした');
+              return;
+            }
+
+            console.log('Quest ID:', questId);
+            console.log('Username:', username);
+            console.log('Issue Number:', issue.number);
+
+            core.setOutput('quest_id', questId);
+            core.setOutput('username', username);
+            core.setOutput('issue_number', issue.number);
+            core.setOutput('branch_name', `quest/${questId.replace(/\//g, '-')}/${username}`);
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch
+        run: |
+          git checkout -b ${{ steps.extract-info.outputs.branch_name }}
+
+      - name: Add user to completers list
+        id: update-quest
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const matter = require('gray-matter');
+
+            const questId = '${{ steps.extract-info.outputs.quest_id }}';
+            const username = '${{ steps.extract-info.outputs.username }}';
+            const questPath = path.join('_data', `${questId}.md`);
+
+            console.log('Quest file path:', questPath);
+
+            if (!fs.existsSync(questPath)) {
+              core.setFailed(`クエストファイルが見つかりません: ${questPath}`);
+              return;
+            }
+
+            // マークダウンファイルを読み込み
+            const fileContent = fs.readFileSync(questPath, 'utf8');
+            const { data, content } = matter(fileContent);
+
+            // completersに追加（重複チェック）
+            if (!data.completers) {
+              data.completers = [];
+            }
+
+            if (!data.completers.includes(username)) {
+              data.completers.push(username);
+              console.log(`Added ${username} to completers`);
+              
+              // ファイルを更新
+              const newContent = matter.stringify(content, data);
+              fs.writeFileSync(questPath, newContent);
+              
+              core.setOutput('updated', 'true');
+              core.setOutput('quest_path', questPath);
+            } else {
+              console.log(`${username} is already in completers`);
+              core.setOutput('updated', 'false');
+            }
+
+      - name: Commit changes
+        if: steps.update-quest.outputs.updated == 'true'
+        run: |
+          git add ${{ steps.update-quest.outputs.quest_path }}
+          git commit -m "feat: Add @${{ steps.extract-info.outputs.username }} to quest completers
+
+          Quest ID: ${{ steps.extract-info.outputs.quest_id }}
+          Closes #${{ steps.extract-info.outputs.issue_number }}"
+
+      - name: Push branch
+        if: steps.update-quest.outputs.updated == 'true'
+        run: |
+          git push origin ${{ steps.extract-info.outputs.branch_name }}
+
+      - name: Create Pull Request
+        if: steps.update-quest.outputs.updated == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pullRequest } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🎉 [Quest Complete] ${{ steps.extract-info.outputs.quest_id }} - @${{ steps.extract-info.outputs.username }}`,
+              head: '${{ steps.extract-info.outputs.branch_name }}',
+              base: 'main',
+              body: `## 🎯 クエスト完了
+
+            このPRは、クエスト完了の申請です。
+
+            ### クエスト情報
+            - **クエストID**: \`${{ steps.extract-info.outputs.quest_id }}\`
+            - **完了者**: @${{ steps.extract-info.outputs.username }}
+            - **関連Issue**: #${{ steps.extract-info.outputs.issue_number }}
+
+            ---
+
+            ### 📝 提出者へ
+
+            以下の情報をこのPRのコメントに追加してください：
+
+            1. **成果物・証拠**
+              - 関連URL（記事、リポジトリ、デモサイトなど）
+              - スクリーンショット
+              - その他の成果物
+
+            2. **振り返り**
+              - 学んだこと
+              - 苦労したこと
+              - 次に挑戦したいこと
+
+            ---
+
+            ### ✅ レビュワーへ
+
+            提出物を確認して、成功条件を満たしている場合はApproveしてください。
+            問題がある場合は、コメントでフィードバックをお願いします。
+
+            ---
+
+            Closes #${{ steps.extract-info.outputs.issue_number }}`
+                        });
+                        
+                        // PRにラベルを追加
+                        await github.rest.issues.addLabels({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          issue_number: pullRequest.number,
+                          labels: ['quest-completion', 'needs-review']
+                        });
+                        
+                        // 元のIssueにコメント
+                        await github.rest.issues.createComment({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          issue_number: ${{ steps.extract-info.outputs.issue_number }},
+                          body: `🎉 クエスト完了申請のPRを作成しました！
+
+            PR: #${pullRequest.number}
+
+            次のステップ：
+            1. PRに成果物（URL、スクリーンショットなど）を投稿してください
+            2. 振り返りを記入してください
+            3. レビューを待ちましょう！
+
+            頑張りましたね！🫐✨`
+            });
+
+            console.log('PR created:', pullRequest.html_url);
+
+      - name: Comment if already completed
+        if: steps.update-quest.outputs.updated == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.extract-info.outputs.issue_number }},
+              body: `⚠️ @${{ steps.extract-info.outputs.username }} さんは既にこのクエストを完了しています。
+
+            完了者リストを確認してください： https://github.com/${{ github.repository }}/blob/main/_data/${{ steps.extract-info.outputs.quest_id }}.md`
+            });
