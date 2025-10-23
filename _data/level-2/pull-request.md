@@ -1,0 +1,50 @@
+---
+date: "2025-10-13"
+title: "初めてのPull Requestを作成しよう"
+priority: "high"
+emoji: "🎯"
+tags: ["github", "pull-request", "コラボレーション"]
+completers: ["charlie", "diana", "eve"]
+---
+
+# Quest: 初めての Pull Request
+
+## 概要
+
+OSS コントリビューションの第一歩！Pull Request（プルリクエスト）を作成してみましょう。
+
+Pull Request は、あなたの変更をプロジェクトに提案する方法です。
+これは、チーム開発や OSS コントリビューションで最も重要なスキルの一つです。
+
+## 参照資料
+
+- [GitHub Pull Request ガイド](https://docs.github.com/ja/pull-requests)
+- [Good First Issue を探す](https://goodfirstissue.dev/)
+- [初心者向け OSS プロジェクト](https://github.com/MunGell/awesome-for-beginners)
+
+## 成功条件
+
+1. どこかのリポジトリ（このリポジトリでも可）でブランチを作成
+2. 意味のある変更を行う
+3. Pull Request を作成する
+4. 適切なタイトルと説明を書く
+5. Pull Request の URL を Issue に投稿する
+
+## 推奨する変更の例
+
+- タイポの修正
+- ドキュメントの改善
+- 翻訳の追加
+- バグ修正
+- 新機能の追加（小規模なもの）
+
+## ヒント
+
+💡 Pull Request を作成する前に：
+
+- コードスタイルがプロジェクトのルールに従っているか確認
+- 変更内容を明確に説明
+- なぜその変更が必要なのかを説明
+- スクリーンショットを添付（UI 変更の場合）
+
+最初は緊張するかもしれませんが、コミュニティは新しいコントリビューターを歓迎しています！
