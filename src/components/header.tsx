@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { auth } from "../../auth";
+import UserAvatar from "./user-avatar";
+import SignInButton from "./sign-in-button";
 
 const navItems = [
   { label: "ホーム", href: "/" },
@@ -7,7 +10,9 @@ const navItems = [
   //   { label: "使い方", href: "/how-to-submit" },
 ];
 
-export function Header() {
+export async function Header() {
+  const session = await auth();
+
   return (
     <header className="sticky top-0 z-50 w-full bg-gradient-to-b from-purple-100 to-background backdrop-blur-md">
       <div className="container mx-auto px-4 py-8 flex items-center justify-between">
@@ -33,14 +38,21 @@ export function Header() {
             </Link>
           ))}
 
-          <Link href="/how-to-submit">
+          {/* <Link href="/how-to-submit">
             <Button
               variant="outline"
               className="border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950"
             >
               使い方
             </Button>
-          </Link>
+          </Link> */}
+          <div className="ml-auto flex items-center space-x-4">
+            {session?.user ? (
+              <UserAvatar />
+            ) : (
+              <SignInButton className="border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950" />
+            )}
+          </div>
         </nav>
       </div>
     </header>
