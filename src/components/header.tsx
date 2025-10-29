@@ -46,7 +46,7 @@ export async function Header() {
               使い方
             </Button>
           </Link> */}
-          <div className="ml-auto flex items-center space-x-4">
+          <div className="flex items-center space-x-4">
             {session?.user ? (
               <UserAvatar />
             ) : (

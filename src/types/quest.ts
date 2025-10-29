@@ -6,7 +6,6 @@ export interface QuestMetadata {
   priority: string;
   emoji: string;
   tags: string[];
-  completers: string[];
 }
 
 export interface Quest {
@@ -15,4 +14,14 @@ export interface Quest {
   metadata: QuestMetadata;
   content: string;
   contentHtml?: string;
+}
+
+// ユーザーの進捗情報の型定義
+export interface UserProgressData {
+  githubUsername: string;
+  currentDay: number;
+}
+
+export interface ProgressData {
+  users: UserProgressData[];
 }

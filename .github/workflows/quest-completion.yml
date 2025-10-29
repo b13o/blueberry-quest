@@ -78,72 +78,96 @@ jobs:
         run: |
           git checkout -b ${{ steps.extract-info.outputs.branch_name }}
 
-      - name: Add user to completers list
-        id: update-quest
+      - name: Update user progress
+        id: update-progress
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const matter = require('gray-matter');
 
             const questSlug = '${{ steps.extract-info.outputs.quest_slug }}';
             const username = '${{ steps.extract-info.outputs.username }}';
-            const questPath = path.join('_data', `${questSlug}.md`);
+            const progressPath = path.join('_data', 'progress.json');
 
-            console.log('Quest file path:', questPath);
+            console.log('Quest slug:', questSlug);
+            console.log('Username:', username);
 
-            if (!fs.existsSync(questPath)) {
-              core.setFailed(`クエストファイルが見つかりません: ${questPath}`);
+            // クエストスラッグからday番号を抽出 (例: "0/start" -> 0, "1/github-signup" -> 1)
+            const dayMatch = questSlug.match(/^(\d+)\//);
+            if (!dayMatch) {
+              core.setFailed(`クエストスラッグからday番号を抽出できません: ${questSlug}`);
               return;
             }
+            const completedDay = parseInt(dayMatch[1], 10);
+            console.log('Completed day:', completedDay);
 
-            // マークダウンファイルを読み込み
-            const fileContent = fs.readFileSync(questPath, 'utf8');
-            const { data, content } = matter(fileContent);
-
-            // completersに追加（重複チェック）
-            if (!data.completers) {
-              data.completers = [];
+            // progress.jsonを読み込み
+            let progressData;
+            if (fs.existsSync(progressPath)) {
+              const progressContent = fs.readFileSync(progressPath, 'utf8');
+              progressData = JSON.parse(progressContent);
+            } else {
+              progressData = { users: [] };
             }
 
-            if (!data.completers.includes(username)) {
-              data.completers.push(username);
-              
-              // 更新日を現在の日付に更新
-              const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-              data.updatedAt = today;
-              
-              console.log(`Added ${username} to completers`);
-              console.log(`Updated updatedAt to ${today}`);
-              
-              // ファイルを更新
-              const newContent = matter.stringify(content, data);
-              fs.writeFileSync(questPath, newContent);
-              
-              core.setOutput('updated', 'true');
-              core.setOutput('quest_path', questPath);
+            // ユーザーを検索
+            let userProgress = progressData.users.find(u => u.githubUsername === username);
+            let isNewUser = false;
+            let isUpdated = false;
+
+            if (!userProgress) {
+              // 新規ユーザー
+              userProgress = {
+                githubUsername: username,
+                currentDay: completedDay
+              };
+              progressData.users.push(userProgress);
+              isNewUser = true;
+              isUpdated = true;
+              console.log(`New user ${username} added with day ${completedDay}`);
             } else {
-              console.log(`${username} is already in completers`);
+              // 既存ユーザー：完了したdayが現在のcurrentDayより大きい場合のみ更新
+              if (completedDay > userProgress.currentDay) {
+                userProgress.currentDay = completedDay;
+                isUpdated = true;
+                console.log(`Updated ${username} progress from ${userProgress.currentDay} to ${completedDay}`);
+              } else if (completedDay === userProgress.currentDay) {
+                console.log(`${username} has already completed day ${completedDay}`);
+                isUpdated = false;
+              } else {
+                console.log(`${username} is already at day ${userProgress.currentDay}, completed day ${completedDay} is in the past`);
+                isUpdated = false;
+              }
+            }
+
+            if (isUpdated) {
+              // progress.jsonを保存（整形して）
+              fs.writeFileSync(progressPath, JSON.stringify(progressData, null, 2) + '\n');
+              core.setOutput('updated', 'true');
+              core.setOutput('progress_path', progressPath);
+              core.setOutput('completed_day', completedDay.toString());
+              core.setOutput('is_new_user', isNewUser.toString());
+            } else {
               core.setOutput('updated', 'false');
             }
 
       - name: Commit changes
-        if: steps.update-quest.outputs.updated == 'true'
+        if: steps.update-progress.outputs.updated == 'true'
         run: |
-          git add ${{ steps.update-quest.outputs.quest_path }}
-          git commit -m "⚔️ quest: Add ${{ steps.extract-info.outputs.username }} to quest completers
+          git add ${{ steps.update-progress.outputs.progress_path }}
+          git commit -m "⚔️ quest: Update progress for ${{ steps.extract-info.outputs.username }} (Day ${{ steps.update-progress.outputs.completed_day }})
 
           Quest: ${{ steps.extract-info.outputs.quest_slug }}
           Closes #${{ steps.extract-info.outputs.issue_number }}"
 
       - name: Push branch
-        if: steps.update-quest.outputs.updated == 'true'
+        if: steps.update-progress.outputs.updated == 'true'
         run: |
           git push origin ${{ steps.extract-info.outputs.branch_name }}
 
       - name: Create Pull Request
-        if: steps.update-quest.outputs.updated == 'true'
+        if: steps.update-progress.outputs.updated == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -160,6 +184,7 @@ jobs:
             ### クエスト情報
             - **クエスト**: \`${{ steps.extract-info.outputs.quest_slug }}\`
             - **完了者**: @${{ steps.extract-info.outputs.username }}
+            - **完了日**: Day ${{ steps.update-progress.outputs.completed_day }}
             - **関連Issue**: #${{ steps.extract-info.outputs.issue_number }}
 
             ---
@@ -218,7 +243,7 @@ jobs:
             console.log('PR created:', pullRequest.html_url);
 
       - name: Comment if already completed
-        if: steps.update-quest.outputs.updated == 'false'
+        if: steps.update-progress.outputs.updated == 'false'
         uses: actions/github-script@v7
         with:
           script: |
@@ -226,9 +251,9 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: ${{ steps.extract-info.outputs.issue_number }},
-              body: `⚠️ @${{ steps.extract-info.outputs.username }} さんは既にこのクエストを完了しています。
+              body: `⚠️ @${{ steps.extract-info.outputs.username }} さんは既にこのクエスト（またはそれ以降）を完了しています。
 
-            完了者リストを確認してください： https://github.com/${{ github.repository }}/blob/main/_data/${{ steps.extract-info.outputs.quest_slug }}.md`
+            進捗状況を確認してください： https://github.com/${{ github.repository }}/blob/main/_data/progress.json`
             });
 
   # PR承認時の処理

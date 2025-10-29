@@ -9,62 +9,54 @@ import { Quest, QuestMetadata } from "@/types/quest";
 const dataDirectory = path.join(process.cwd(), "_data");
 
 /**
- * 指定されたレベルのすべてのクエストを取得
- * @param level - クエストレベル（0-5）
- * @returns クエストの配列
+ * すべてのクエストを取得
+ * @returns すべてのクエストの配列
  */
-export function getQuestsByLevel(level: number): Quest[] {
-  const levelDir = path.join(dataDirectory, `level-${level}`);
-
-  // ディレクトリが存在しない場合は空配列を返す
-  if (!fs.existsSync(levelDir)) {
+export function getAllQuests(): Quest[] {
+  if (!fs.existsSync(dataDirectory)) {
     return [];
   }
 
-  const fileNames = fs.readdirSync(levelDir);
+  const fileNames = fs.readdirSync(dataDirectory);
   const quests = fileNames
     .filter((fileName) => fileName.endsWith(".md"))
     .map((fileName) => {
-      const slug = fileName.replace(/\.md$/, "");
-      const fullPath = path.join(levelDir, fileName);
+      // ファイル名から day と slug を抽出（例: "0.start.md" -> day=0, slug="start"）
+      const match = fileName.match(/^(\d+)\.(.+)\.md$/);
+      if (!match) return null;
+
+      const day = parseInt(match[1], 10);
+      const slug = match[2];
+      const fullPath = path.join(dataDirectory, fileName);
       const fileContents = fs.readFileSync(fullPath, "utf8");
       const { data, content } = matter(fileContents);
 
       return {
-        slug: `level-${level}/${slug}`,
-        level,
+        slug: `${day}/${slug}`,
+        level: day,
         metadata: data as QuestMetadata,
         content,
       };
-    });
+    })
+    .filter((quest): quest is Quest => quest !== null)
+    .sort((a, b) => a.level - b.level);
 
   return quests;
 }
 
 /**
- * すべてのクエストを取得
- * @returns すべてのクエストの配列
- */
-export function getAllQuests(): Quest[] {
-  const allQuests: Quest[] = [];
-
-  // レベル0-5まで取得
-  for (let level = 0; level <= 5; level++) {
-    const quests = getQuestsByLevel(level);
-    allQuests.push(...quests);
-  }
-
-  return allQuests;
-}
-
-/**
  * 特定のクエストを取得
- * @param slug - クエストスラッグ（例: "level-0/start"）
+ * @param day - デイ番号
+ * @param slug - クエストスラッグ（例: "start"）
  * @returns クエスト情報
  */
-export async function getQuestBySlug(slug: string): Promise<Quest | null> {
+export async function getQuestBySlug(
+  day: number,
+  slug: string
+): Promise<Quest | null> {
   try {
-    const fullPath = path.join(dataDirectory, `${slug}.md`);
+    const fileName = `${day}.${slug}.md`;
+    const fullPath = path.join(dataDirectory, fileName);
 
     if (!fs.existsSync(fullPath)) {
       return null;
@@ -77,36 +69,33 @@ export async function getQuestBySlug(slug: string): Promise<Quest | null> {
     const processedContent = await remark().use(html).process(content);
     const contentHtml = processedContent.toString();
 
-    // レベルを抽出
-    const levelMatch = slug.match(/level-(\d+)/);
-    const level = levelMatch ? parseInt(levelMatch[1], 10) : 0;
-
     return {
-      slug,
-      level,
+      slug: `${day}/${slug}`,
+      level: day,
       metadata: data as QuestMetadata,
       content,
       contentHtml,
     };
   } catch (error) {
-    console.error(`Error loading quest ${slug}:`, error);
+    console.error(`Error loading quest ${day}/${slug}:`, error);
     return null;
   }
 }
 
 /**
- * レベル別にクエストをグループ化
- * @returns レベルごとのクエストマップ
+ * Day別にクエストをグループ化
+ * @returns Dayごとのクエストマップ
  */
 export function getQuestsGroupedByLevel(): Record<number, Quest[]> {
+  const allQuests = getAllQuests();
   const grouped: Record<number, Quest[]> = {};
 
-  for (let level = 0; level <= 5; level++) {
-    const quests = getQuestsByLevel(level);
-    if (quests.length > 0) {
-      grouped[level] = quests;
+  allQuests.forEach((quest) => {
+    if (!grouped[quest.level]) {
+      grouped[quest.level] = [];
     }
-  }
+    grouped[quest.level].push(quest);
+  });
 
   return grouped;
 }

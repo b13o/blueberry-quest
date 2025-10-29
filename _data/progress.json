@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "githubUsername": "tanaka",
+      "currentDay": 3
+    },
+    {
+      "githubUsername": "yamada",
+      "currentDay": 2
+    },
+    {
+      "githubUsername": "sato",
+      "currentDay": 1
+    },
+    {
+      "githubUsername": "alice",
+      "currentDay": 8
+    },
+    {
+      "githubUsername": "bob",
+      "currentDay": 3
+    },
+    {
+      "githubUsername": "charlie",
+      "currentDay": 0
+    }
+  ]
+}
