@@ -1,0 +1,67 @@
+name: 🎯 クエストに挑戦する
+description: クエストに挑戦を開始します
+title: "[Quest] "
+labels: ["quest-in-progress"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🫐 Blueberry Quest へようこそ！
+
+        このIssueを作成することで、クエストへの挑戦を開始します。
+        作業が完了したら、コメント欄に「完了しました」と投稿してください。
+        自動的にPRが作成されます！
+
+        **注意**: GitHubユーザー名は、Issueにコメントした人（あなた）が自動的に使用されます。
+
+  - type: input
+    id: quest-slug
+    attributes:
+      label: クエストスラッグ
+      description: "クエストの識別子（例: level-0/start, level-1/daily-commit）"
+      placeholder: "level-0/start"
+    validations:
+      required: true
+
+  - type: input
+    id: quest-title
+    attributes:
+      label: クエスト名
+      description: 挑戦するクエストのタイトル
+      placeholder: "GitHub Discussions を使いこなそう！"
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目標・学習計画
+      description: このクエストで達成したいことや学習計画を書いてください
+      placeholder: |
+        - GitHub Discussionsの基本的な使い方を学ぶ
+        - 実際に投稿してみる
+        - 完了まで3日を予定
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: メモ・コメント
+      description: その他、メモやコメントがあれば記入してください
+      placeholder: わからないことがあれば気軽にコメントしてください！
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: 確認事項
+      description: 以下を確認してください
+      options:
+        - label: クエストの内容を確認しました
+          required: true
+        - label: 成功条件を理解しました
+          required: true
+        - label: 作業完了時にこのIssueにコメントすることを理解しました
+          required: true
