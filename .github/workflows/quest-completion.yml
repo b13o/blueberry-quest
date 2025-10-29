@@ -111,7 +111,7 @@ jobs:
               // 新規ユーザー
               userProgress = {
                 githubUsername: username,
-                currentDay: completedDay
+                currentDay: completedDay + 1
               };
               progressData.users.push(userProgress);
               isNewUser = true;
