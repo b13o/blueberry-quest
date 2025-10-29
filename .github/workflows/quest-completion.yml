@@ -1,8 +1,10 @@
-name: Quest Completion - Create PR
+name: Quest Completion
 
 on:
   issue_comment:
     types: [created]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   create-completion-pr:
@@ -130,7 +132,7 @@ jobs:
         if: steps.update-quest.outputs.updated == 'true'
         run: |
           git add ${{ steps.update-quest.outputs.quest_path }}
-          git commit -m "feat: Add @${{ steps.extract-info.outputs.username }} to quest completers
+          git commit -m "⚔️ quest: Add ${{ steps.extract-info.outputs.username }} to quest completers
 
           Quest: ${{ steps.extract-info.outputs.quest_slug }}
           Closes #${{ steps.extract-info.outputs.issue_number }}"
@@ -228,3 +230,153 @@ jobs:
 
             完了者リストを確認してください： https://github.com/${{ github.repository }}/blob/main/_data/${{ steps.extract-info.outputs.quest_slug }}.md`
             });
+
+  # PR承認時の処理
+  quest-approved:
+    # PRがApproveされた場合に実行
+    if: |
+      github.event.review.state == 'approved' &&
+      contains(github.event.pull_request.labels.*.name, 'quest-completion')
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Extract quest information from PR
+        id: extract-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+            const prTitle = pr.title || '';
+
+            // PRタイトルからクエストスラッグとユーザー名を抽出
+            // 例: "🎉 [Quest Complete] level-0/start - @username"
+            const titleMatch = prTitle.match(/\[Quest Complete\]\s+(.+?)\s+-\s+@(.+)/);
+
+            if (!titleMatch) {
+              core.setFailed('PRタイトルからクエスト情報を抽出できませんでした');
+              return;
+            }
+
+            const questSlug = titleMatch[1].trim();
+            const username = titleMatch[2].trim();
+
+            // PRボディから関連Issueを抽出
+            const issueMatch = prBody.match(/Closes #(\d+)/);
+            const issueNumber = issueMatch ? issueMatch[1] : null;
+
+            console.log('Quest Slug:', questSlug);
+            console.log('Username:', username);
+            console.log('Issue Number:', issueNumber);
+            console.log('PR Number:', pr.number);
+
+            core.setOutput('quest_slug', questSlug);
+            core.setOutput('username', username);
+            core.setOutput('issue_number', issueNumber);
+            core.setOutput('pr_number', pr.number);
+
+      - name: Generate completion page URL
+        id: generate-url
+        run: |
+          QUEST_SLUG="${{ steps.extract-info.outputs.quest_slug }}"
+          USERNAME="${{ steps.extract-info.outputs.username }}"
+
+          # BASE_URLを環境に応じて設定（本番環境のURLに変更してください）
+          BASE_URL="https://blueberry-quest.vercel.app"
+
+          # クエストスラッグをURLパス用に変換（スラッシュはそのまま）
+          COMPLETION_URL="${BASE_URL}/quests/${QUEST_SLUG}/complete?username=${USERNAME}"
+
+          echo "completion_url=${COMPLETION_URL}" >> $GITHUB_OUTPUT
+          echo "Completion URL: ${COMPLETION_URL}"
+
+      - name: Comment on PR with completion page
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const completionUrl = '${{ steps.generate-url.outputs.completion_url }}';
+            const username = '${{ steps.extract-info.outputs.username }}';
+            const questSlug = '${{ steps.extract-info.outputs.quest_slug }}';
+
+            const message = `# 🎉 クエスト完了おめでとうございます！
+
+            @${username} さん、クエスト「${questSlug}」の完了が承認されました！
+
+            ## ✨ 完了ページ
+
+            あなた専用の完了ページが用意されています：
+
+            🔗 **[完了ページを見る](${completionUrl})**
+
+            完了ページでは以下のことができます：
+            - 🎊 達成を祝う
+            - 🐦 X (Twitter) でシェアする
+            - 🏆 次のクエストを探す
+
+            おめでとうございます！次の冒険も楽しみにしています！ 🫐✨`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: message
+            });
+
+            console.log('Posted completion page URL to PR');
+
+      - name: Comment on related Issue
+        if: steps.extract-info.outputs.issue_number != null
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const completionUrl = '${{ steps.generate-url.outputs.completion_url }}';
+            const username = '${{ steps.extract-info.outputs.username }}';
+            const prNumber = '${{ steps.extract-info.outputs.pr_number }}';
+
+            const message = `# 🎉 クエスト完了が承認されました！
+
+            @${username} さん、おめでとうございます！
+
+            あなたのクエスト完了申請（PR #${prNumber}）が承認されました。
+
+            ## 🎊 完了ページはこちら
+
+            🔗 **[完了ページを見る](${completionUrl})**
+
+            完了ページで達成をシェアしましょう！🫐✨`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.extract-info.outputs.issue_number }},
+              body: message
+            });
+
+            console.log('Posted completion page URL to Issue');
+
+      - name: Merge Pull Request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // PRをマージ
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                merge_method: 'squash',
+                commit_title: `🎉 quest: Complete ${context.payload.pull_request.title}`,
+                commit_message: `Approved by @${context.payload.review.user.login}`
+              });
+              
+              console.log('PR merged successfully');
+            } catch (error) {
+              console.error('Failed to merge PR:', error);
+              // マージに失敗してもワークフロー自体は続行
+            }
