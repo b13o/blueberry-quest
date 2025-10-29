@@ -273,7 +273,8 @@ jobs:
 
             // PRタイトルからクエストスラッグとユーザー名を抽出
             // 例: "🎉 [Quest Complete] level-0/start - @username"
-            const titleMatch = prTitle.match(/\[Quest Complete\]\s+(.+?)\s+-\s+@(.+)/);
+            // 例: "🎉 クエスト完了: level-0/start - username"
+            const titleMatch = prTitle.match(/🎉\s+クエスト完了:\s+(.+?)\s+-\s+(.+)/);
 
             if (!titleMatch) {
               core.setFailed('PRタイトルからクエスト情報を抽出できませんでした');
