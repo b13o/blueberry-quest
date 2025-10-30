@@ -1,0 +1,86 @@
+name: 🌱 チュートリアル - はじめてのクエスト
+description: はじめてのクエストに挑戦！Blueberry Questの使い方を学びましょう
+title: "[Tutorial] はじめてのクエスト"
+labels: ["quest-in-progress", "tutorial"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # 🫐 Blueberry Quest へようこそ！
+
+        このチュートリアルでは、Blueberry Quest の基本的な使い方を学びます。
+
+        ## 📚 チュートリアルの流れ
+
+        1. **このIssueを作成** → クエストへの挑戦を開始します
+        2. **クエストの内容を確認** → [チュートリアルページ](../../quests/0/start)を見てみましょう
+        3. **作業を完了** → 簡単なステップを完了します
+        4. **完了を報告** → このIssueのコメント欄に「完了しました」と書き込みます
+        5. **自動でPRが作成される** → あなたの進捗が記録されます
+        6. **自動で承認・完了** → チュートリアルは自動的に承認されます！
+
+        ---
+
+        💡 **初めての方へ**
+        - わからないことがあっても大丈夫！気軽に質問してください
+        - このチュートリアルは **自動承認** されるので、安心して進めてください
+        - 失敗しても何度でもやり直せます
+
+        それでは、はじめましょう！🚀
+
+  - type: input
+    id: quest-slug
+    attributes:
+      label: クエストスラッグ
+      description: "チュートリアルのスラッグです（変更しないでください）"
+      value: "0/start"
+    validations:
+      required: true
+
+  - type: input
+    id: quest-title
+    attributes:
+      label: クエスト名
+      description: チュートリアルのタイトル
+      value: "チュートリアルに参加！"
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 参加の意気込み
+      description: Blueberry Quest で達成したいことや、学習の目標を自由に書いてください！
+      placeholder: |
+        例：
+        - Gitを使いこなせるようになりたい
+        - 毎日少しずつ学習する習慣をつけたい
+        - 仲間と一緒に成長したい
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: 📝 確認事項
+      description: 以下を確認してください
+      options:
+        - label: Blueberry Quest の使い方を理解しました
+          required: true
+        - label: 作業完了時にこのIssueに「完了しました」とコメントすることを理解しました
+          required: true
+        - label: チュートリアルは自動承認されることを理解しました
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 🎯 次のステップ
+
+        1. 下の「Submit new issue」ボタンをクリック
+        2. [チュートリアルページ](../../quests/0/start)で作業内容を確認
+        3. 完了したらこのIssueに「完了しました」とコメント
+
+        頑張ってください！ 🫐✨

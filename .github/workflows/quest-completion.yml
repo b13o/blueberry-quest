@@ -157,18 +157,62 @@ jobs:
         run: |
           git push origin ${{ steps.extract-info.outputs.branch_name }}
 
+      - name: Check if tutorial
+        id: check-tutorial
+        run: |
+          QUEST_SLUG="${{ steps.extract-info.outputs.quest_slug }}"
+          if [[ "$QUEST_SLUG" == 0/* ]]; then
+            echo "is_tutorial=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_tutorial=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Pull Request
         if: steps.update-progress.outputs.updated == 'true'
+        id: create-pr
         uses: actions/github-script@v7
         with:
           script: |
-            const { data: pullRequest } = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🎉 クエスト完了: ${{ steps.extract-info.outputs.quest_slug }} - ${{ steps.extract-info.outputs.username }}`,
-              head: '${{ steps.extract-info.outputs.branch_name }}',
-              base: 'main',
-              body: `## 🎯 クエスト完了
+            const isTutorial = '${{ steps.check-tutorial.outputs.is_tutorial }}' === 'true';
+
+            // チュートリアル用の親切なPR本文
+            const tutorialBody = `## 🌱 チュートリアル完了おめでとうございます！
+
+            このPRは、**はじめてのクエスト**の完了申請です。
+            チュートリアルは **自動的に承認・マージ** されます！
+
+            ### ✨ クエスト情報
+            - **クエスト**: \`${{ steps.extract-info.outputs.quest_slug }}\` (チュートリアル)
+            - **完了者**: @${{ steps.extract-info.outputs.username }}
+            - **関連Issue**: #${{ steps.extract-info.outputs.issue_number }}
+
+            ---
+
+            ### 🎊 次のステップ
+
+            チュートリアルは自動的に承認されます。数秒お待ちください...
+
+            承認されると：
+            1. ✅ あなたの進捗が記録されます
+            2. 🎉 完了ページが用意されます
+            3. 🚀 次のクエスト（Day 1）がアンロックされます！
+
+            ---
+
+            ### 💡 これから始まる冒険
+
+            Blueberry Quest では、毎日1つのクエストに挑戦できます。
+            Git/GitHub を使いながら、実践的なスキルを身につけていきましょう！
+
+            わからないことがあれば、いつでも質問してください。
+            一緒に頑張りましょう！🫐✨
+
+            ---
+
+            Closes #${{ steps.extract-info.outputs.issue_number }}`;
+
+            // 通常クエスト用のPR本文
+            const regularBody = `## 🎯 クエスト完了
 
             このPRは、クエスト完了の申請です。
 
@@ -203,23 +247,44 @@ jobs:
 
             ---
 
-            Closes #${{ steps.extract-info.outputs.issue_number }}`
-                        });
-                        
-                        // PRにラベルを追加
-                        await github.rest.issues.addLabels({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          issue_number: pullRequest.number,
-                          labels: ['quest-completion', 'needs-review']
-                        });
-                        
-                        // 元のIssueにコメント
-                        await github.rest.issues.createComment({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          issue_number: ${{ steps.extract-info.outputs.issue_number }},
-                          body: `🎉 クエスト完了申請のPRを作成しました！
+            Closes #${{ steps.extract-info.outputs.issue_number }}`;
+
+            // PRを作成
+            const { data: pullRequest } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🎉 クエスト完了: ${{ steps.extract-info.outputs.quest_slug }} - ${{ steps.extract-info.outputs.username }}`,
+              head: '${{ steps.extract-info.outputs.branch_name }}',
+              base: 'main',
+              body: isTutorial ? tutorialBody : regularBody
+            });
+
+            // PRにラベルを追加
+            const labels = ['quest-completion'];
+            if (isTutorial) {
+              labels.push('tutorial', 'auto-approve');
+            } else {
+              labels.push('needs-review');
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pullRequest.number,
+              labels: labels
+            });
+
+            // 元のIssueにコメント（チュートリアルと通常で内容を分ける）
+            const issueComment = isTutorial 
+              ? `🎉 チュートリアル完了申請のPRを作成しました！
+
+            PR: #${pullRequest.number}
+
+            **チュートリアルは自動的に承認されます** ので、そのままお待ちください！
+            数秒後に完了ページのリンクが表示されます。
+
+            おめでとうございます！🫐✨`
+              : `🎉 クエスト完了申請のPRを作成しました！
 
             PR: #${pullRequest.number}
 
@@ -228,10 +293,125 @@ jobs:
             2. 振り返りを記入してください
             3. レビューを待ちましょう！
 
-            頑張りましたね！🫐✨`
+            頑張りましたね！🫐✨`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.extract-info.outputs.issue_number }},
+              body: issueComment
             });
 
+            // PR番号を出力（後続のステップで使用）
+            core.setOutput('pr_number', pullRequest.number);
             console.log('PR created:', pullRequest.html_url);
+
+      - name: Auto-approve tutorial PR
+        if: steps.update-progress.outputs.updated == 'true' && steps.check-tutorial.outputs.is_tutorial == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = ${{ steps.create-pr.outputs.pr_number }};
+
+            // チュートリアルPRを自動承認
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              event: 'APPROVE',
+              body: `🎉 チュートリアルの完了を自動承認しました！
+
+            おめでとうございます！はじめてのクエストをクリアしましたね。
+
+            これから毎日1つずつクエストに挑戦して、スキルアップしていきましょう！
+            次のクエスト（Day 1）がアンロックされています。
+
+            頑張ってください！🫐✨`
+            });
+
+            console.log('Tutorial PR auto-approved');
+
+      - name: Auto-merge tutorial PR
+        if: steps.update-progress.outputs.updated == 'true' && steps.check-tutorial.outputs.is_tutorial == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.create-pr.outputs.pr_number }};
+
+            // 少し待ってからマージ（承認処理が完了するのを待つ）
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            try {
+              // PRをマージ
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash',
+                commit_title: `🎉 quest: Complete tutorial - @${{ steps.extract-info.outputs.username }}`,
+                commit_message: `Automatically approved and merged tutorial completion`
+              });
+              
+              console.log('Tutorial PR auto-merged');
+              
+              // 完了ページURLを生成
+              const questSlug = '${{ steps.extract-info.outputs.quest_slug }}';
+              const username = '${{ steps.extract-info.outputs.username }}';
+              const baseUrl = 'https://blueberry-quest.vercel.app';
+              const completionUrl = `${baseUrl}/quests/${questSlug}/complete?username=${username}`;
+              
+              // PRに完了メッセージをコメント
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `# 🎊 チュートリアル完了おめでとうございます！
+
+            @${username} さん、はじめてのクエストをクリアしました！
+
+            ## ✨ 完了ページ
+
+            あなた専用の完了ページが用意されています：
+
+            🔗 **[完了ページを見る](${completionUrl})**
+
+            完了ページでは以下のことができます：
+            - 🎊 達成を祝う
+            - 🐦 X (Twitter) でシェアする
+            - 🚀 次のクエストを探す
+
+            ## 🎯 次の冒険
+
+            おめでとうございます！これからが本番です。
+            次のクエスト（Day 1）があなたを待っています。
+
+            毎日コツコツと続けて、実践的なスキルを身につけていきましょう！🫐✨`
+              });
+              
+              // 元のIssueにも完了メッセージ
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ steps.extract-info.outputs.issue_number }},
+                body: `# 🎉 チュートリアル完了が承認されました！
+
+            @${username} さん、おめでとうございます！
+
+            PRが自動的に承認・マージされました。
+
+            ## 🎊 完了ページはこちら
+
+            🔗 **[完了ページを見る](${completionUrl})**
+
+            完了ページで達成をシェアしましょう！
+            次のクエストもお楽しみに！🫐✨`
+              });
+              
+            } catch (error) {
+              console.error('Failed to auto-merge tutorial PR:', error);
+              // エラーが発生した場合もワークフローは続行
+            }
 
       - name: Comment if already completed
         if: steps.update-progress.outputs.updated == 'false'
@@ -272,7 +452,6 @@ jobs:
             const prTitle = pr.title || '';
 
             // PRタイトルからクエストスラッグとユーザー名を抽出
-            // 例: "🎉 [Quest Complete] level-0/start - @username"
             // 例: "🎉 クエスト完了: level-0/start - username"
             const titleMatch = prTitle.match(/🎉\s+クエスト完了:\s+(.+?)\s+-\s+(.+)/);
 
