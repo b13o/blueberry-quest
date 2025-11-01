@@ -319,7 +319,7 @@ jobs:
               repo: context.repo.repo,
               pull_number: prNumber,
               event: 'APPROVE',
-              body: `🎉 チュートリアルの完了を自動承認しました！
+              body: `🎉 チュートリアルの完了を承認しました！
 
             おめでとうございます！はじめてのクエストをクリアしましたね。
 
@@ -357,7 +357,7 @@ jobs:
               // 完了ページURLを生成
               const questSlug = '${{ steps.extract-info.outputs.quest_slug }}';
               const username = '${{ steps.extract-info.outputs.username }}';
-              const baseUrl = 'https://blueberry-quest.vercel.app';
+              const baseUrl = 'https://blueberry-quest.b13o.com';
               const completionUrl = `${baseUrl}/quests/${questSlug}/complete?username=${username}`;
               
               // PRに完了メッセージをコメント
@@ -483,7 +483,7 @@ jobs:
           USERNAME="${{ steps.extract-info.outputs.username }}"
 
           # BASE_URLを環境に応じて設定（本番環境のURLに変更してください）
-          BASE_URL="https://blueberry-quest.vercel.app"
+          BASE_URL="https://blueberry-quest.b13o.com"
 
           # クエストスラッグをURLパス用に変換（スラッシュはそのまま）
           COMPLETION_URL="${BASE_URL}/quests/${QUEST_SLUG}/complete?username=${USERNAME}"
