@@ -118,12 +118,12 @@ jobs:
               isUpdated = true;
               console.log(`New user ${username} added with day ${completedDay}`);
             } else {
-              // 既存ユーザー：完了したdayが現在のcurrentDayより大きい場合のみ更新
-              if (completedDay > userProgress.currentDay) {
+              // 既存ユーザー：完了したday+1が現在のcurrentDayより大きい場合のみ更新
+              if (completedDay + 1 > userProgress.currentDay) {
                 userProgress.currentDay = completedDay + 1;
                 isUpdated = true;
                 console.log(`Updated ${username} progress from ${userProgress.currentDay} to ${completedDay}`);
-              } else if (completedDay === userProgress.currentDay) {
+              } else if (completedDay + 1 === userProgress.currentDay) {
                 console.log(`${username} has already completed day ${completedDay}`);
                 isUpdated = false;
               } else {
