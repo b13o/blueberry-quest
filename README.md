@@ -77,4 +77,4 @@ Happy Hacking;) 🫐🌿🎧
 
 [![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)][twttr-share]
 
-[twttr-share]: https://twitter.com/intent/tweet?text=BlueberryQuestで「プログラミング学習→アウトプット」を習慣化🫐⚔️&url=https://github.com/b13o/blueberry-quest&hashtags=b13o"Tweet this project"
+[twttr-share]: https://twitter.com/intent/tweet?text=BlueberryQuestで「プログラミング学習→アウトプット」を習慣化🫐⚔️&url=https://github.com/b13o/blueberry-quest&hashtags=b13o "Tweet this project"
